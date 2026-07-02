@@ -16,36 +16,63 @@
     --glass-border: rgba(255,255,255,0.6);
     --ink:#1C1C1E;
     --ink-soft:#6E6E73;
+    --page-bg-1:#eef1f7;
+    --page-bg-2:#e4e7f0;
+    --segment-bg: rgba(118,118,128,0.12);
+    --dropzone-bg: rgba(255,255,255,0.35);
+    --divider: rgba(0,0,0,0.07);
+    --sheen: rgba(255,255,255,0.35);
+    --thumb-bg: rgba(255,255,255,0.5);
     --radius-lg:28px;
     --radius-md:18px;
     --radius-sm:12px;
   }
+  body.dark{
+    --glass-bg: rgba(28,28,34,0.55);
+    --glass-bg-strong: rgba(36,36,44,0.78);
+    --glass-border: rgba(255,255,255,0.12);
+    --ink:#F2F2F7;
+    --ink-soft:#9A9AA4;
+    --page-bg-1:#0c0d14;
+    --page-bg-2:#15161f;
+    --segment-bg: rgba(255,255,255,0.08);
+    --dropzone-bg: rgba(255,255,255,0.05);
+    --divider: rgba(255,255,255,0.10);
+    --sheen: rgba(255,255,255,0.05);
+    --thumb-bg: rgba(255,255,255,0.06);
+  }
   *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
   html,body{height:100%;}
+  html{ background:linear-gradient(180deg,var(--page-bg-1),var(--page-bg-2)); }
   body{
     margin:0;
     min-height:100vh;
     font-family:-apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
     color:var(--ink);
     background:
-      radial-gradient(circle at 15% 15%, rgba(191,90,242,0.35), transparent 45%),
-      radial-gradient(circle at 85% 10%, rgba(10,132,255,0.35), transparent 45%),
-      radial-gradient(circle at 25% 90%, rgba(100,210,255,0.3), transparent 45%),
-      radial-gradient(circle at 90% 85%, rgba(255,55,95,0.28), transparent 45%),
-      linear-gradient(180deg,#eef1f7,#e4e7f0);
+      radial-gradient(1200px 900px at 10% 8%, rgba(191,90,242,0.28), transparent 70%),
+      radial-gradient(1200px 900px at 90% 6%, rgba(10,132,255,0.28), transparent 70%),
+      radial-gradient(1100px 900px at 15% 96%, rgba(100,210,255,0.22), transparent 70%),
+      radial-gradient(1100px 900px at 95% 92%, rgba(255,55,95,0.20), transparent 70%),
+      linear-gradient(180deg, var(--page-bg-1), var(--page-bg-2));
+    background-repeat:no-repeat;
+    background-attachment:fixed;
     overflow-x:hidden;
     position:relative;
+    transition: background-color .4s ease, color .4s ease;
   }
   /* floating blurred blobs for the liquid glass atmosphere */
   .blob{
     position:fixed;
     border-radius:50%;
     filter:blur(60px);
-    opacity:0.55;
+    opacity:0.5;
     z-index:0;
     pointer-events:none;
     animation: float 18s ease-in-out infinite;
+    transition: opacity .4s ease;
   }
+  body.dark .blob{ opacity:0.35; }
   .blob1{width:420px;height:420px; background:radial-gradient(circle,var(--purple),transparent 70%); top:-120px; left:-100px; animation-delay:0s;}
   .blob2{width:380px;height:380px; background:radial-gradient(circle,var(--blue),transparent 70%); top:20%; right:-140px; animation-delay:3s;}
   .blob3{width:340px;height:340px; background:radial-gradient(circle,var(--pink),transparent 70%); bottom:-100px; left:20%; animation-delay:6s;}
@@ -56,6 +83,24 @@
   @media (prefers-reduced-motion: reduce){
     .blob{animation:none;}
   }
+
+  .theme-toggle{
+    position:fixed;
+    top:18px; right:18px;
+    z-index:50;
+    width:46px; height:46px;
+    border-radius:50%;
+    border:1px solid var(--glass-border);
+    background:var(--glass-bg-strong);
+    backdrop-filter:blur(20px) saturate(180%);
+    -webkit-backdrop-filter:blur(20px) saturate(180%);
+    box-shadow:0 6px 18px rgba(0,0,0,0.12);
+    display:flex; align-items:center; justify-content:center;
+    cursor:pointer;
+    font-size:19px;
+    transition:transform .2s ease, background .3s ease;
+  }
+  .theme-toggle:active{ transform:scale(0.88) rotate(20deg); }
 
   .wrap{
     position:relative;
@@ -111,11 +156,12 @@
     margin-bottom:22px;
     position:relative;
     overflow:hidden;
+    transition: background-color .4s ease, border-color .4s ease;
   }
   .glass-card::before{
     content:"";
     position:absolute; inset:0;
-    background:linear-gradient(135deg, rgba(255,255,255,0.35), transparent 40%);
+    background:linear-gradient(135deg, var(--sheen), transparent 40%);
     pointer-events:none;
   }
 
@@ -127,7 +173,7 @@
     text-align:center;
     cursor:pointer;
     transition:all .25s ease;
-    background:rgba(255,255,255,0.35);
+    background:var(--dropzone-bg);
   }
   .dropzone:hover, .dropzone.dragover{
     border-color:var(--blue);
@@ -158,12 +204,19 @@
     position:relative;
     border-radius:var(--radius-sm);
     overflow:hidden;
-    background:rgba(255,255,255,0.5);
-    border:1px solid rgba(255,255,255,0.6);
+    background:var(--thumb-bg);
+    border:1px solid var(--glass-border);
     aspect-ratio:3/4;
     box-shadow:0 4px 14px rgba(0,0,0,0.08);
+    cursor:grab;
+    transition:transform .18s ease, opacity .18s ease, outline-color .18s ease;
+    outline:2px dashed transparent;
+    outline-offset:2px;
   }
-  .file-item img{ width:100%; height:100%; object-fit:cover; display:block; }
+  .file-item:active{ cursor:grabbing; }
+  .file-item.dragging{ opacity:0.35; transform:scale(0.94); }
+  .file-item.drag-over{ outline-color:var(--blue); transform:scale(1.02); }
+  .file-item img{ width:100%; height:100%; object-fit:cover; display:block; pointer-events:none; }
   .file-item .badge{
     position:absolute; bottom:0; left:0; right:0;
     padding:5px 7px;
@@ -171,6 +224,18 @@
     color:#fff;
     background:linear-gradient(0deg, rgba(0,0,0,0.55), transparent);
     white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  }
+  .file-item .grip{
+    position:absolute; top:5px; left:50%;
+    transform:translateX(-50%);
+    padding:2px 8px;
+    border-radius:100px;
+    background:rgba(28,28,30,0.45);
+    backdrop-filter:blur(6px);
+    color:#fff;
+    font-size:10px;
+    letter-spacing:2px;
+    pointer-events:none;
   }
   .file-item .remove{
     position:absolute; top:5px; right:5px;
@@ -187,7 +252,7 @@
   }
   .file-item .remove:hover{ background:rgba(255,55,95,0.85); }
   .file-item .order{
-    position:absolute; top:5px; left:5px;
+    position:absolute; bottom:5px; left:5px;
     width:20px;height:20px;
     border-radius:50%;
     background:rgba(255,255,255,0.85);
@@ -195,6 +260,12 @@
     font-size:10px;
     font-weight:700;
     display:flex;align-items:center;justify-content:center;
+  }
+  .filelist-hint{
+    font-size:12px;
+    color:var(--ink-soft);
+    text-align:center;
+    margin:14px 0 0;
   }
 
   /* section title */
@@ -216,7 +287,7 @@
     display:grid;
     grid-template-columns:repeat(5,1fr);
     gap:6px;
-    background:rgba(118,118,128,0.12);
+    background:var(--segment-bg);
     border-radius:var(--radius-md);
     padding:5px;
   }
@@ -307,7 +378,7 @@
     animation:pop .3s ease;
     margin-top:24px;
     padding-top:24px;
-    border-top:1px solid rgba(0,0,0,0.07);
+    border-top:1px solid var(--divider);
   }
   @keyframes pop{ from{opacity:0; transform:translateY(8px);} to{opacity:1; transform:translateY(0);} }
   .result .check{
@@ -371,6 +442,8 @@
 </head>
 <body>
 
+<button class="theme-toggle" id="themeToggle" aria-label="Ganti tema gelap/terang" title="Ganti tema gelap/terang">🌙</button>
+
 <div class="blob blob1"></div>
 <div class="blob blob2"></div>
 <div class="blob blob3"></div>
@@ -394,6 +467,7 @@
     </div>
     <input type="file" id="fileInput" accept=".jpg,.jpeg,.png,image/jpeg,image/png" multiple>
     <div class="file-list" id="fileList"></div>
+    <p class="filelist-hint" id="filelistHint" style="display:none;">↕️ Seret (drag) gambar untuk mengubah urutan halaman</p>
   </div>
 
   <!-- Compression card -->
@@ -458,9 +532,16 @@
 
 <script>
 (function(){
+  const themeToggle = document.getElementById('themeToggle');
+  themeToggle.addEventListener('click', ()=>{
+    const isDark = document.body.classList.toggle('dark');
+    themeToggle.textContent = isDark ? '☀️' : '🌙';
+  });
+
   const dropzone = document.getElementById('dropzone');
   const fileInput = document.getElementById('fileInput');
   const fileList = document.getElementById('fileList');
+  const filelistHint = document.getElementById('filelistHint');
   const compressCard = document.getElementById('compressCard');
   const pagesizeCard = document.getElementById('pagesizeCard');
   const convertBtn = document.getElementById('convertBtn');
@@ -472,6 +553,8 @@
   let files = []; // {file, url, id}
   let pdfBlob = null;
   let idCounter = 0;
+  let draggedIndex = null;
+  let pdfFileName = 'converted.pdf';
 
   const hints = {
     none: 'Original: kualitas gambar dipertahankan 100%, ukuran file PDF paling besar.',
@@ -517,12 +600,42 @@
     files.forEach((item, idx)=>{
       const div = document.createElement('div');
       div.className = 'file-item';
+      div.setAttribute('draggable','true');
+      div.dataset.index = idx;
       div.innerHTML = `
         <img src="${item.url}" alt="">
+        <div class="grip">⋮⋮</div>
         <div class="order">${idx+1}</div>
         <button class="remove" data-id="${item.id}">✕</button>
         <div class="badge">${(item.file.size/1024).toFixed(0)} KB</div>
       `;
+
+      div.addEventListener('dragstart', ()=>{
+        draggedIndex = idx;
+        requestAnimationFrame(()=> div.classList.add('dragging'));
+      });
+      div.addEventListener('dragend', ()=>{
+        div.classList.remove('dragging');
+        fileList.querySelectorAll('.file-item').forEach(el=> el.classList.remove('drag-over'));
+        draggedIndex = null;
+      });
+      div.addEventListener('dragover', (e)=>{
+        e.preventDefault();
+        div.classList.add('drag-over');
+      });
+      div.addEventListener('dragleave', ()=>{
+        div.classList.remove('drag-over');
+      });
+      div.addEventListener('drop', (e)=>{
+        e.preventDefault();
+        div.classList.remove('drag-over');
+        const targetIndex = parseInt(div.dataset.index);
+        if(draggedIndex === null || draggedIndex === targetIndex) return;
+        const moved = files.splice(draggedIndex,1)[0];
+        files.splice(targetIndex,0,moved);
+        renderFileList();
+      });
+
       fileList.appendChild(div);
     });
     fileList.querySelectorAll('.remove').forEach(btn=>{
@@ -534,6 +647,7 @@
         updateUI();
       });
     });
+    filelistHint.style.display = files.length > 1 ? 'block' : 'none';
     updateUI();
   }
 
@@ -643,6 +757,7 @@
       }
 
       pdfBlob = doc.output('blob');
+      pdfFileName = sanitizeFileName(files[0].file.name) + '.pdf';
       const afterSize = pdfBlob.size;
       document.getElementById('sizeBefore').textContent = formatSize(totalOriginal);
       document.getElementById('sizeAfter').textContent = formatSize(afterSize);
@@ -673,6 +788,12 @@
     });
   }
 
+  function sanitizeFileName(name){
+    const base = name.replace(/\.[^/.]+$/, '').trim();
+    const cleaned = base.replace(/[\\/:*?"<>|]/g, '').trim();
+    return cleaned.length > 0 ? cleaned : 'converted';
+  }
+
   function formatSize(bytes){
     if(bytes < 1024) return bytes + ' B';
     if(bytes < 1024*1024) return (bytes/1024).toFixed(0) + ' KB';
@@ -684,7 +805,7 @@
     const url = URL.createObjectURL(pdfBlob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'converted-' + Date.now() + '.pdf';
+    a.download = pdfFileName;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
