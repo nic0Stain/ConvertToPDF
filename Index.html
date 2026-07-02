@@ -1,0 +1,697 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Image → PDF</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+  :root{
+    --blue:#0A84FF;
+    --purple:#BF5AF2;
+    --pink:#FF375F;
+    --teal:#64D2FF;
+    --glass-bg: rgba(255,255,255,0.55);
+    --glass-bg-strong: rgba(255,255,255,0.75);
+    --glass-border: rgba(255,255,255,0.6);
+    --ink:#1C1C1E;
+    --ink-soft:#6E6E73;
+    --radius-lg:28px;
+    --radius-md:18px;
+    --radius-sm:12px;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{height:100%;}
+  body{
+    margin:0;
+    min-height:100vh;
+    font-family:-apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
+    color:var(--ink);
+    background:
+      radial-gradient(circle at 15% 15%, rgba(191,90,242,0.35), transparent 45%),
+      radial-gradient(circle at 85% 10%, rgba(10,132,255,0.35), transparent 45%),
+      radial-gradient(circle at 25% 90%, rgba(100,210,255,0.3), transparent 45%),
+      radial-gradient(circle at 90% 85%, rgba(255,55,95,0.28), transparent 45%),
+      linear-gradient(180deg,#eef1f7,#e4e7f0);
+    overflow-x:hidden;
+    position:relative;
+  }
+  /* floating blurred blobs for the liquid glass atmosphere */
+  .blob{
+    position:fixed;
+    border-radius:50%;
+    filter:blur(60px);
+    opacity:0.55;
+    z-index:0;
+    pointer-events:none;
+    animation: float 18s ease-in-out infinite;
+  }
+  .blob1{width:420px;height:420px; background:radial-gradient(circle,var(--purple),transparent 70%); top:-120px; left:-100px; animation-delay:0s;}
+  .blob2{width:380px;height:380px; background:radial-gradient(circle,var(--blue),transparent 70%); top:20%; right:-140px; animation-delay:3s;}
+  .blob3{width:340px;height:340px; background:radial-gradient(circle,var(--pink),transparent 70%); bottom:-100px; left:20%; animation-delay:6s;}
+  @keyframes float{
+    0%,100%{ transform:translate(0,0) scale(1); }
+    50%{ transform:translate(30px,-30px) scale(1.08); }
+  }
+  @media (prefers-reduced-motion: reduce){
+    .blob{animation:none;}
+  }
+
+  .wrap{
+    position:relative;
+    z-index:1;
+    max-width:820px;
+    margin:0 auto;
+    padding:56px 20px 80px;
+  }
+
+  header{ text-align:center; margin-bottom:34px; }
+  .eyebrow{
+    display:inline-flex; align-items:center; gap:6px;
+    font-size:13px; font-weight:600; letter-spacing:0.02em;
+    color:var(--blue);
+    background:var(--glass-bg);
+    border:1px solid var(--glass-border);
+    backdrop-filter:blur(20px) saturate(180%);
+    -webkit-backdrop-filter:blur(20px) saturate(180%);
+    padding:6px 14px; border-radius:100px;
+    box-shadow:0 4px 18px rgba(0,0,0,0.06);
+    margin-bottom:16px;
+  }
+  h1{
+    font-size:clamp(28px,5vw,40px);
+    font-weight:700;
+    letter-spacing:-0.02em;
+    margin:0 0 10px;
+  }
+  h1 span{
+    background:linear-gradient(90deg,var(--blue),var(--purple));
+    -webkit-background-clip:text;
+    background-clip:text;
+    color:transparent;
+  }
+  header p{
+    color:var(--ink-soft);
+    font-size:16px;
+    margin:0 auto;
+    max-width:460px;
+    line-height:1.5;
+  }
+
+  .glass-card{
+    background:var(--glass-bg);
+    border:1px solid var(--glass-border);
+    backdrop-filter:blur(28px) saturate(180%);
+    -webkit-backdrop-filter:blur(28px) saturate(180%);
+    border-radius:var(--radius-lg);
+    box-shadow:
+      0 8px 32px rgba(31,38,135,0.10),
+      inset 0 1px 0 rgba(255,255,255,0.7);
+    padding:26px;
+    margin-bottom:22px;
+    position:relative;
+    overflow:hidden;
+  }
+  .glass-card::before{
+    content:"";
+    position:absolute; inset:0;
+    background:linear-gradient(135deg, rgba(255,255,255,0.35), transparent 40%);
+    pointer-events:none;
+  }
+
+  /* dropzone */
+  .dropzone{
+    border:1.5px dashed rgba(10,132,255,0.4);
+    border-radius:var(--radius-md);
+    padding:38px 20px;
+    text-align:center;
+    cursor:pointer;
+    transition:all .25s ease;
+    background:rgba(255,255,255,0.35);
+  }
+  .dropzone:hover, .dropzone.dragover{
+    border-color:var(--blue);
+    background:rgba(10,132,255,0.08);
+    transform:scale(1.005);
+  }
+  .dropzone .icon{
+    width:56px;height:56px;
+    margin:0 auto 14px;
+    border-radius:16px;
+    display:flex;align-items:center;justify-content:center;
+    background:linear-gradient(135deg,var(--blue),var(--purple));
+    box-shadow:0 6px 20px rgba(10,132,255,0.35);
+  }
+  .dropzone .icon svg{width:26px;height:26px;stroke:#fff;}
+  .dropzone strong{font-size:16px; display:block; margin-bottom:4px;}
+  .dropzone span{font-size:13px; color:var(--ink-soft);}
+  input[type=file]{display:none;}
+
+  /* thumbnails */
+  .file-list{
+    display:grid;
+    grid-template-columns:repeat(auto-fill,minmax(120px,1fr));
+    gap:14px;
+    margin-top:20px;
+  }
+  .file-item{
+    position:relative;
+    border-radius:var(--radius-sm);
+    overflow:hidden;
+    background:rgba(255,255,255,0.5);
+    border:1px solid rgba(255,255,255,0.6);
+    aspect-ratio:3/4;
+    box-shadow:0 4px 14px rgba(0,0,0,0.08);
+  }
+  .file-item img{ width:100%; height:100%; object-fit:cover; display:block; }
+  .file-item .badge{
+    position:absolute; bottom:0; left:0; right:0;
+    padding:5px 7px;
+    font-size:10.5px;
+    color:#fff;
+    background:linear-gradient(0deg, rgba(0,0,0,0.55), transparent);
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  }
+  .file-item .remove{
+    position:absolute; top:5px; right:5px;
+    width:22px;height:22px;
+    border-radius:50%;
+    background:rgba(28,28,30,0.55);
+    backdrop-filter:blur(6px);
+    border:none;
+    color:#fff;
+    font-size:13px;
+    line-height:1;
+    cursor:pointer;
+    display:flex;align-items:center;justify-content:center;
+  }
+  .file-item .remove:hover{ background:rgba(255,55,95,0.85); }
+  .file-item .order{
+    position:absolute; top:5px; left:5px;
+    width:20px;height:20px;
+    border-radius:50%;
+    background:rgba(255,255,255,0.85);
+    color:var(--ink);
+    font-size:10px;
+    font-weight:700;
+    display:flex;align-items:center;justify-content:center;
+  }
+
+  /* section title */
+  .section-title{
+    font-size:14px;
+    font-weight:600;
+    color:var(--ink);
+    margin:0 0 12px;
+    display:flex; align-items:center; gap:8px;
+  }
+  .section-title .num{
+    width:20px;height:20px;border-radius:50%;
+    background:linear-gradient(135deg,var(--blue),var(--purple));
+    color:#fff; font-size:11px; display:flex;align-items:center;justify-content:center;
+  }
+
+  /* segmented control - iOS style */
+  .segmented{
+    display:grid;
+    grid-template-columns:repeat(5,1fr);
+    gap:6px;
+    background:rgba(118,118,128,0.12);
+    border-radius:var(--radius-md);
+    padding:5px;
+  }
+  .segmented label{
+    position:relative;
+    text-align:center;
+    padding:10px 4px;
+    font-size:12.5px;
+    font-weight:600;
+    color:var(--ink-soft);
+    border-radius:14px;
+    cursor:pointer;
+    transition:all .2s ease;
+    user-select:none;
+  }
+  .segmented input{ display:none; }
+  .segmented input:checked + label{
+    background:var(--glass-bg-strong);
+    color:var(--ink);
+    box-shadow:0 3px 10px rgba(0,0,0,0.12), inset 0 1px 0 rgba(255,255,255,0.8);
+  }
+  .segmented label .tag{
+    display:block;
+    font-size:10px;
+    font-weight:500;
+    color:var(--ink-soft);
+    margin-top:2px;
+  }
+  .segmented label.hd{ color:var(--blue); }
+  .segmented input:checked + label.hd{ color:var(--blue); }
+
+  .hint{
+    font-size:12.5px;
+    color:var(--ink-soft);
+    margin:12px 2px 0;
+    line-height:1.5;
+  }
+
+  /* buttons */
+  .btn{
+    appearance:none;
+    border:none;
+    cursor:pointer;
+    font-family:inherit;
+    font-weight:650;
+    font-size:15.5px;
+    padding:15px 22px;
+    border-radius:100px;
+    display:flex; align-items:center; justify-content:center; gap:8px;
+    transition:transform .15s ease, box-shadow .15s ease, opacity .15s ease;
+    width:100%;
+  }
+  .btn:active{ transform:scale(0.98); }
+  .btn-primary{
+    background:linear-gradient(135deg,var(--blue),var(--purple));
+    color:#fff;
+    box-shadow:0 8px 24px rgba(10,132,255,0.35);
+  }
+  .btn-primary:disabled{
+    opacity:0.45;
+    cursor:not-allowed;
+    box-shadow:none;
+  }
+  .btn-secondary{
+    background:var(--glass-bg-strong);
+    color:var(--ink);
+    border:1px solid var(--glass-border);
+  }
+
+  .spinner{
+    width:18px;height:18px;
+    border-radius:50%;
+    border:2.5px solid rgba(255,255,255,0.4);
+    border-top-color:#fff;
+    animation:spin .7s linear infinite;
+    display:none;
+  }
+  @keyframes spin{ to{ transform:rotate(360deg); } }
+  .btn-primary.loading .spinner{ display:inline-block; }
+  .btn-primary.loading .btn-label{ display:none; }
+
+  /* result */
+  .result{
+    display:none;
+    flex-direction:column;
+    align-items:center;
+    text-align:center;
+    animation:pop .3s ease;
+    margin-top:24px;
+    padding-top:24px;
+    border-top:1px solid rgba(0,0,0,0.07);
+  }
+  @keyframes pop{ from{opacity:0; transform:translateY(8px);} to{opacity:1; transform:translateY(0);} }
+  .result .check{
+    width:58px;height:58px;
+    border-radius:50%;
+    margin:0 0 14px;
+    background:linear-gradient(135deg,#34C759,#30D158);
+    display:flex;align-items:center;justify-content:center;
+    box-shadow:0 8px 20px rgba(52,199,89,0.35);
+    flex-shrink:0;
+  }
+  .result .check svg{ width:26px;height:26px; stroke:#fff; }
+  .result h3{ margin:0 0 16px; font-size:19px; }
+  .result .sizes{
+    display:flex; justify-content:center; gap:28px;
+    margin:0 0 16px;
+    font-size:13px;
+    color:var(--ink-soft);
+  }
+  .result .sizes b{ display:block; font-size:17px; color:var(--ink); font-weight:700; margin-top:3px; }
+  .result .savings{
+    display:inline-block;
+    font-size:12.5px;
+    font-weight:700;
+    color:#1E8E4F;
+    background:rgba(52,199,89,0.15);
+    padding:5px 14px;
+    border-radius:100px;
+    margin:0 0 22px;
+  }
+  .result .btn-secondary{
+    width:100%;
+  }
+
+  footer{
+    text-align:center;
+    font-size:12px;
+    color:var(--ink-soft);
+    margin-top:10px;
+    line-height:1.7;
+  }
+  footer .credit{
+    margin-top:4px;
+    font-size:12px;
+    font-weight:600;
+    letter-spacing:0.01em;
+  }
+  footer .credit b{
+    background:linear-gradient(90deg,var(--blue),var(--purple));
+    -webkit-background-clip:text;
+    background-clip:text;
+    color:transparent;
+    font-weight:700;
+  }
+
+  @media (max-width:520px){
+    .segmented{ grid-template-columns:repeat(3,1fr); }
+    .segmented label:nth-child(9),.segmented label:nth-child(10){ grid-column:span 1.5; }
+  }
+</style>
+</head>
+<body>
+
+<div class="blob blob1"></div>
+<div class="blob blob2"></div>
+<div class="blob blob3"></div>
+
+<div class="wrap">
+  <header>
+    <div class="eyebrow">✨ Simple &amp; cepat</div>
+    <h1>Ubah gambar jadi <span>PDF</span></h1>
+    <p>Upload JPG, PNG, atau JPEG, pilih tingkat kompresi, lalu unduh PDF-nya. Semua diproses langsung di browser kamu — tidak ada file yang diunggah ke server.</p>
+  </header>
+
+  <!-- Upload card -->
+  <div class="glass-card">
+    <div class="section-title"><span class="num">1</span> Pilih gambar</div>
+    <div class="dropzone" id="dropzone">
+      <div class="icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4M12 4l-5 5M12 4l5 5"/><path d="M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>
+      </div>
+      <strong>Tap atau seret gambar ke sini</strong>
+      <span>Mendukung JPG, PNG, JPEG · bisa pilih banyak file sekaligus</span>
+    </div>
+    <input type="file" id="fileInput" accept=".jpg,.jpeg,.png,image/jpeg,image/png" multiple>
+    <div class="file-list" id="fileList"></div>
+  </div>
+
+  <!-- Compression card -->
+  <div class="glass-card" id="compressCard" style="display:none;">
+    <div class="section-title"><span class="num">2</span> Tingkat kompresi</div>
+    <div class="segmented" id="segmented">
+      <input type="radio" name="compress" id="c-none" value="none">
+      <label for="c-none">Original<span class="tag">0%</span></label>
+
+      <input type="radio" name="compress" id="c-low" value="low">
+      <label for="c-low">Low<span class="tag">↓ sedikit</span></label>
+
+      <input type="radio" name="compress" id="c-medium" value="medium" checked>
+      <label for="c-medium">Medium<span class="tag">seimbang</span></label>
+
+      <input type="radio" name="compress" id="c-max" value="max">
+      <label for="c-max">Max<span class="tag">↓ paling kecil</span></label>
+
+      <input type="radio" name="compress" id="c-hd" value="hd">
+      <label for="c-hd" class="hd">HD Smart<span class="tag">kecil, tajam</span></label>
+    </div>
+    <p class="hint" id="hintText">Medium: ukuran file PDF berkurang cukup signifikan dengan penurunan kualitas yang hampir tidak terlihat.</p>
+  </div>
+
+  <!-- Page size card -->
+  <div class="glass-card" id="pagesizeCard" style="display:none;">
+    <div class="section-title"><span class="num">3</span> Ukuran halaman PDF</div>
+    <div class="segmented" id="segmentedSize" style="grid-template-columns:repeat(2,1fr);">
+      <input type="radio" name="pagesize" id="p-original" value="original" checked>
+      <label for="p-original">Ukuran Asli<span class="tag">sesuai gambar</span></label>
+
+      <input type="radio" name="pagesize" id="p-a4" value="a4">
+      <label for="p-a4">A4<span class="tag">standar, rapi</span></label>
+    </div>
+    <p class="hint" id="hintSize">Ukuran Asli: setiap halaman PDF mengikuti dimensi &amp; rasio gambar aslinya, tanpa border putih — cocok untuk scan atau screenshot.</p>
+  </div>
+
+  <!-- Action card -->
+  <div class="glass-card">
+    <button class="btn btn-primary" id="convertBtn" disabled>
+      <span class="spinner"></span>
+      <span class="btn-label">📄 Ubah ke PDF</span>
+    </button>
+
+    <div class="result" id="result">
+      <div class="check"><svg viewBox="0 0 24 24" fill="none" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg></div>
+      <h3>PDF kamu siap!</h3>
+      <div class="sizes">
+        <div>Sebelum<b id="sizeBefore">-</b></div>
+        <div>Sesudah<b id="sizeAfter">-</b></div>
+      </div>
+      <div class="savings" id="savings"></div>
+      <button class="btn btn-secondary" id="downloadBtn">⬇️ Unduh PDF</button>
+    </div>
+  </div>
+
+  <footer>
+    <div>Dibuat dengan 🩵 — semua proses konversi terjadi lokal di perangkatmu.</div>
+    <div class="credit">Dibuat Oleh <b>The king, the legend, the myth - Ariansyah</b></div>
+  </footer>
+</div>
+
+<script>
+(function(){
+  const dropzone = document.getElementById('dropzone');
+  const fileInput = document.getElementById('fileInput');
+  const fileList = document.getElementById('fileList');
+  const compressCard = document.getElementById('compressCard');
+  const pagesizeCard = document.getElementById('pagesizeCard');
+  const convertBtn = document.getElementById('convertBtn');
+  const result = document.getElementById('result');
+  const downloadBtn = document.getElementById('downloadBtn');
+  const hintText = document.getElementById('hintText');
+  const hintSize = document.getElementById('hintSize');
+
+  let files = []; // {file, url, id}
+  let pdfBlob = null;
+  let idCounter = 0;
+
+  const hints = {
+    none: 'Original: kualitas gambar dipertahankan 100%, ukuran file PDF paling besar.',
+    low: 'Low: kompresi ringan, kualitas nyaris tidak berubah, ukuran file sedikit lebih kecil.',
+    medium: 'Medium: ukuran file PDF berkurang cukup signifikan dengan penurunan kualitas yang hampir tidak terlihat.',
+    max: 'Max: kompresi paling kuat untuk ukuran file paling kecil, cocok untuk dikirim lewat email/chat.',
+    hd: 'HD Smart: resolusi asli dipertahankan penuh, hanya encoding yang dioptimalkan — hasil tetap tajam namun ukuran file jauh lebih kecil dari PNG/JPEG asli.'
+  };
+
+  const sizeHints = {
+    original: 'Ukuran Asli: setiap halaman PDF mengikuti dimensi & rasio gambar aslinya, tanpa border putih — cocok untuk scan atau screenshot.',
+    a4: 'A4: gambar dirapikan ke ukuran kertas standar A4 dengan margin di sekelilingnya — cocok untuk dicetak.'
+  };
+
+  document.querySelectorAll('input[name=compress]').forEach(r=>{
+    r.addEventListener('change', ()=>{ hintText.textContent = hints[r.value]; });
+  });
+
+  document.querySelectorAll('input[name=pagesize]').forEach(r=>{
+    r.addEventListener('change', ()=>{ hintSize.textContent = sizeHints[r.value]; });
+  });
+
+  dropzone.addEventListener('click', ()=> fileInput.click());
+  dropzone.addEventListener('dragover', e=>{ e.preventDefault(); dropzone.classList.add('dragover'); });
+  dropzone.addEventListener('dragleave', ()=> dropzone.classList.remove('dragover'));
+  dropzone.addEventListener('drop', e=>{
+    e.preventDefault();
+    dropzone.classList.remove('dragover');
+    handleFiles(e.dataTransfer.files);
+  });
+  fileInput.addEventListener('change', e=> handleFiles(e.target.files));
+
+  function handleFiles(fileListRaw){
+    const valid = Array.from(fileListRaw).filter(f=> /image\/(jpeg|png)/.test(f.type));
+    valid.forEach(f=>{
+      files.push({ file:f, url:URL.createObjectURL(f), id:idCounter++ });
+    });
+    renderFileList();
+  }
+
+  function renderFileList(){
+    fileList.innerHTML = '';
+    files.forEach((item, idx)=>{
+      const div = document.createElement('div');
+      div.className = 'file-item';
+      div.innerHTML = `
+        <img src="${item.url}" alt="">
+        <div class="order">${idx+1}</div>
+        <button class="remove" data-id="${item.id}">✕</button>
+        <div class="badge">${(item.file.size/1024).toFixed(0)} KB</div>
+      `;
+      fileList.appendChild(div);
+    });
+    fileList.querySelectorAll('.remove').forEach(btn=>{
+      btn.addEventListener('click', (e)=>{
+        e.stopPropagation();
+        const id = parseInt(btn.dataset.id);
+        files = files.filter(f=> f.id !== id);
+        renderFileList();
+        updateUI();
+      });
+    });
+    updateUI();
+  }
+
+  function updateUI(){
+    const has = files.length > 0;
+    compressCard.style.display = has ? 'block' : 'none';
+    pagesizeCard.style.display = has ? 'block' : 'none';
+    convertBtn.disabled = !has;
+    result.style.display = 'none';
+    pdfBlob = null;
+  }
+
+  function loadImage(url){
+    return new Promise((resolve, reject)=>{
+      const img = new Image();
+      img.onload = ()=> resolve(img);
+      img.onerror = reject;
+      img.src = url;
+    });
+  }
+
+  // returns {dataUrl, w, h, format}
+  function processImage(img, mode){
+    let scale = 1, quality = 0.92, format = 'image/jpeg';
+    if(mode === 'none'){
+      return { direct:true };
+    }
+    if(mode === 'low'){ scale = 1; quality = 0.85; }
+    if(mode === 'medium'){ scale = 0.85; quality = 0.65; }
+    if(mode === 'max'){ scale = 0.6; quality = 0.4; }
+    if(mode === 'hd'){ scale = 1; quality = 0.85; }
+
+    const w = Math.max(1, Math.round(img.naturalWidth * scale));
+    const h = Math.max(1, Math.round(img.naturalHeight * scale));
+    const canvas = document.createElement('canvas');
+    canvas.width = w; canvas.height = h;
+    const ctx = canvas.getContext('2d');
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+    // white background so PNG transparency doesn't turn black when flattened to JPEG
+    ctx.fillStyle = '#FFFFFF';
+    ctx.fillRect(0,0,w,h);
+    ctx.drawImage(img, 0, 0, w, h);
+    const dataUrl = canvas.toDataURL(format, quality);
+    return { dataUrl, w, h, format };
+  }
+
+  convertBtn.addEventListener('click', async ()=>{
+    if(files.length === 0) return;
+    convertBtn.classList.add('loading');
+    convertBtn.disabled = true;
+
+    const mode = document.querySelector('input[name=compress]:checked').value;
+    const pagesizeMode = document.querySelector('input[name=pagesize]:checked').value;
+    const { jsPDF } = window.jspdf;
+    let doc = null;
+    let totalOriginal = 0;
+    files.forEach(f=> totalOriginal += f.file.size);
+
+    try{
+      for(let i=0; i<files.length; i++){
+        const item = files[i];
+        const img = await loadImage(item.url);
+        const processed = processImage(img, mode);
+
+        let dataUrl, w, h, format;
+        if(processed.direct){
+          // use original file as-is, no re-encoding
+          dataUrl = await fileToDataUrl(item.file);
+          w = img.naturalWidth; h = img.naturalHeight;
+          format = item.file.type === 'image/png' ? 'PNG' : 'JPEG';
+        } else {
+          dataUrl = processed.dataUrl;
+          w = processed.w; h = processed.h;
+          format = 'JPEG';
+        }
+
+        let orientation, pageFormat, drawW, drawH, x, y;
+
+        if(pagesizeMode === 'original'){
+          // page dimensions follow the image's own pixel size (96dpi -> mm), no white margin
+          const mmW = w * 25.4 / 96;
+          const mmH = h * 25.4 / 96;
+          orientation = mmW >= mmH ? 'landscape' : 'portrait';
+          pageFormat = [mmW, mmH];
+          drawW = mmW; drawH = mmH; x = 0; y = 0;
+        } else {
+          orientation = w >= h ? 'landscape' : 'portrait';
+          pageFormat = 'a4';
+          const pageW = orientation === 'landscape' ? 297 : 210;
+          const pageH = orientation === 'landscape' ? 210 : 297;
+          const margin = 8;
+          const maxW = pageW - margin*2;
+          const maxH = pageH - margin*2;
+          drawW = maxW; drawH = maxW * (h/w);
+          if(drawH > maxH){ drawH = maxH; drawW = maxH * (w/h); }
+          x = (pageW - drawW)/2;
+          y = (pageH - drawH)/2;
+        }
+
+        if(i === 0){
+          doc = new jsPDF({ orientation, unit:'mm', format:pageFormat });
+        } else {
+          doc.addPage(pageFormat, orientation);
+        }
+        doc.addImage(dataUrl, format, x, y, drawW, drawH, undefined, 'FAST');
+      }
+
+      pdfBlob = doc.output('blob');
+      const afterSize = pdfBlob.size;
+      document.getElementById('sizeBefore').textContent = formatSize(totalOriginal);
+      document.getElementById('sizeAfter').textContent = formatSize(afterSize);
+      const savingsPct = totalOriginal > 0 ? Math.round((1 - afterSize/totalOriginal) * 100) : 0;
+      const savingsEl = document.getElementById('savings');
+      if(savingsPct > 0){
+        savingsEl.style.display = 'inline-block';
+        savingsEl.textContent = `↓ ${savingsPct}% lebih kecil`;
+      } else {
+        savingsEl.style.display = 'none';
+      }
+      result.style.display = 'flex';
+    } catch(err){
+      alert('Terjadi kesalahan saat membuat PDF: ' + err.message);
+      console.error(err);
+    } finally {
+      convertBtn.classList.remove('loading');
+      convertBtn.disabled = false;
+    }
+  });
+
+  function fileToDataUrl(file){
+    return new Promise((resolve, reject)=>{
+      const reader = new FileReader();
+      reader.onload = ()=> resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  }
+
+  function formatSize(bytes){
+    if(bytes < 1024) return bytes + ' B';
+    if(bytes < 1024*1024) return (bytes/1024).toFixed(0) + ' KB';
+    return (bytes/(1024*1024)).toFixed(2) + ' MB';
+  }
+
+  downloadBtn.addEventListener('click', ()=>{
+    if(!pdfBlob) return;
+    const url = URL.createObjectURL(pdfBlob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'converted-' + Date.now() + '.pdf';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(()=> URL.revokeObjectURL(url), 2000);
+  });
+})();
+</script>
+
+</body>
+</html>
