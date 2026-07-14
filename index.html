@@ -3,8 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Image → PDF</title>
+<title>Konverter File — PDF · Video · Gambar</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://unpkg.com/@ffmpeg/ffmpeg@0.12.10/dist/umd/ffmpeg.js"></script>
+<script src="https://unpkg.com/@ffmpeg/util@0.12.1/dist/umd/index.js"></script>
 <style>
   :root{
     --blue:#0A84FF;
@@ -377,6 +379,113 @@
     .segmented{ grid-template-columns:repeat(3,1fr); }
     .segmented label:nth-child(9),.segmented label:nth-child(10){ grid-column:span 1.5; }
   }
+
+  /* main tab bar */
+  .tabbar{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:6px;
+    background:var(--segment-bg);
+    border:1px solid var(--glass-border);
+    backdrop-filter:blur(16px) saturate(160%);
+    -webkit-backdrop-filter:blur(16px) saturate(160%);
+    border-radius:var(--radius-lg);
+    padding:6px;
+    margin-bottom:24px;
+  }
+  .tabbar button{
+    appearance:none; border:none; cursor:pointer;
+    font-family:inherit;
+    background:transparent;
+    color:var(--ink-soft);
+    font-size:13px;
+    font-weight:600;
+    padding:12px 6px;
+    border-radius:14px;
+    display:flex; flex-direction:column; align-items:center; gap:4px;
+    transition:all .2s ease;
+  }
+  .tabbar button .tabicon{ font-size:18px; line-height:1; }
+  .tabbar button.active{
+    background:var(--glass-bg-strong);
+    color:var(--ink);
+    box-shadow:0 3px 10px rgba(0,0,0,0.12);
+  }
+  .tab-panel{ display:none; }
+  .tab-panel.active{ display:block; }
+
+  /* video progress */
+  .progress-wrap{
+    margin-top:16px;
+    display:none;
+  }
+  .progress-wrap.show{ display:block; }
+  .progress-track{
+    width:100%;
+    height:8px;
+    border-radius:100px;
+    background:var(--segment-bg);
+    overflow:hidden;
+  }
+  .progress-fill{
+    height:100%;
+    width:0%;
+    border-radius:100px;
+    background:linear-gradient(90deg,var(--blue),var(--purple));
+    transition:width .2s ease;
+  }
+  .progress-label{
+    font-size:12.5px;
+    color:var(--ink-soft);
+    margin-top:8px;
+    text-align:center;
+  }
+
+  .format-pill{
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+    font-size:11px;
+    font-weight:600;
+    color:var(--ink);
+    background:var(--glass-bg-strong);
+    border:1px solid var(--glass-border);
+    padding:3px 10px;
+    border-radius:100px;
+  }
+
+  .video-file-row{
+    display:flex;
+    align-items:center;
+    gap:12px;
+    padding:12px;
+    background:var(--thumb-bg);
+    border:1px solid var(--glass-border);
+    border-radius:var(--radius-sm);
+    margin-top:12px;
+  }
+  .video-file-row .vicon{
+    width:38px;height:38px;flex-shrink:0;
+    border-radius:10px;
+    background:linear-gradient(135deg,var(--blue),var(--purple));
+    display:flex;align-items:center;justify-content:center;
+    font-size:16px;
+  }
+  .video-file-row .vinfo{ flex:1; min-width:0; }
+  .video-file-row .vname{
+    font-size:13.5px; font-weight:600;
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  }
+  .video-file-row .vmeta{ font-size:11.5px; color:var(--ink-soft); margin-top:2px; }
+  .video-file-row .vremove{
+    width:26px;height:26px; flex-shrink:0;
+    border-radius:50%;
+    background:rgba(255,255,255,0.08);
+    border:none; color:var(--ink); cursor:pointer;
+    display:flex;align-items:center;justify-content:center;
+    font-size:13px;
+  }
+  .video-file-row .vremove:hover{ background:rgba(255,55,95,0.85); }
 </style>
 </head>
 <body>
@@ -384,9 +493,18 @@
 <div class="wrap">
   <header>
     <div class="eyebrow">✨ Simple &amp; cepat</div>
-    <h1>Ubah gambar jadi <span>PDF</span></h1>
-    <p>Upload JPG, PNG, atau JPEG, pilih tingkat kompresi, lalu unduh PDF-nya. Semua diproses langsung di browser kamu — tidak ada file yang diunggah ke server.</p>
+    <h1>Konverter file, jadi <span>gampang</span></h1>
+    <p>Ubah gambar ke PDF, video ke MP4, atau WebP ke JPEG. Semua diproses langsung di browser kamu — tidak ada file yang diunggah ke server.</p>
   </header>
+
+  <div class="tabbar" id="tabbar">
+    <button type="button" class="active" data-tab="image"><span class="tabicon">📄</span> Gambar → PDF</button>
+    <button type="button" data-tab="video"><span class="tabicon">🎬</span> Video → MP4</button>
+    <button type="button" data-tab="webp"><span class="tabicon">🖼️</span> WebP → JPEG</button>
+  </div>
+
+  <!-- ===================== TAB: IMAGE -> PDF ===================== -->
+  <div class="tab-panel active" id="tab-image">
 
   <!-- Upload card -->
   <div class="glass-card">
@@ -456,6 +574,108 @@
       <button class="btn btn-secondary" id="downloadBtn">⬇️ Unduh PDF</button>
     </div>
   </div>
+
+  </div>
+  <!-- ===================== END TAB: IMAGE -> PDF ===================== -->
+
+  <!-- ===================== TAB: VIDEO -> MP4 ===================== -->
+  <div class="tab-panel" id="tab-video">
+
+    <div class="glass-card">
+      <div class="section-title"><span class="num">1</span> Pilih video</div>
+      <div class="dropzone" id="vDropzone">
+        <div class="icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4M12 4l-5 5M12 4l5 5"/><path d="M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>
+        </div>
+        <strong>Tap atau seret video ke sini</strong>
+        <span>Mendukung MOV, AVI, MKV, WEBM, FLV, WMV, dan format video lainnya</span>
+      </div>
+      <input type="file" id="vFileInput" accept="video/*,.mov,.avi,.mkv,.webm,.flv,.wmv,.m4v,.3gp,.mpg,.mpeg,.ts">
+      <div id="vFileRow"></div>
+    </div>
+
+    <div class="glass-card" id="vQualityCard" style="display:none;">
+      <div class="section-title"><span class="num">2</span> Kualitas output</div>
+      <div class="segmented" id="vSegmented" style="grid-template-columns:repeat(3,1fr);">
+        <input type="radio" name="vquality" id="v-high" value="high">
+        <label for="v-high">Tinggi<span class="tag">kualitas terbaik</span></label>
+
+        <input type="radio" name="vquality" id="v-medium" value="medium" checked>
+        <label for="v-medium">Seimbang<span class="tag">disarankan</span></label>
+
+        <input type="radio" name="vquality" id="v-low" value="low">
+        <label for="v-low">Ringan<span class="tag">file terkecil</span></label>
+      </div>
+      <p class="hint">Semakin tinggi kualitas, semakin besar ukuran file MP4 yang dihasilkan. Proses konversi berjalan sepenuhnya di perangkatmu, jadi bisa memakan waktu beberapa menit tergantung ukuran video dan spesifikasi perangkat.</p>
+    </div>
+
+    <div class="glass-card">
+      <button class="btn btn-primary" id="vConvertBtn" disabled>
+        <span class="spinner"></span>
+        <span class="btn-label">🎬 Ubah ke MP4</span>
+      </button>
+
+      <div class="progress-wrap" id="vProgressWrap">
+        <div class="progress-track"><div class="progress-fill" id="vProgressFill"></div></div>
+        <div class="progress-label" id="vProgressLabel">Menyiapkan mesin konversi…</div>
+      </div>
+
+      <div class="result" id="vResult">
+        <div class="check"><svg viewBox="0 0 24 24" fill="none" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg></div>
+        <h3>Video MP4 kamu siap!</h3>
+        <div class="sizes">
+          <div>Sebelum<b id="vSizeBefore">-</b></div>
+          <div>Sesudah<b id="vSizeAfter">-</b></div>
+        </div>
+        <div class="savings" id="vSavings"></div>
+        <button class="btn btn-secondary" id="vDownloadBtn">⬇️ Unduh MP4</button>
+      </div>
+    </div>
+
+  </div>
+  <!-- ===================== END TAB: VIDEO -> MP4 ===================== -->
+
+  <!-- ===================== TAB: WEBP -> JPEG ===================== -->
+  <div class="tab-panel" id="tab-webp">
+
+    <div class="glass-card">
+      <div class="section-title"><span class="num">1</span> Pilih gambar WebP</div>
+      <div class="dropzone" id="wDropzone">
+        <div class="icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4M12 4l-5 5M12 4l5 5"/><path d="M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>
+        </div>
+        <strong>Tap atau seret gambar .webp ke sini</strong>
+        <span>Bisa pilih banyak file sekaligus — hasil diunduh sebagai .jpg</span>
+      </div>
+      <input type="file" id="wFileInput" accept=".webp,image/webp" multiple>
+      <div class="file-list" id="wFileList"></div>
+    </div>
+
+    <div class="glass-card" id="wQualityCard" style="display:none;">
+      <div class="section-title"><span class="num">2</span> Kualitas JPEG</div>
+      <div class="segmented" id="wSegmented" style="grid-template-columns:repeat(3,1fr);">
+        <input type="radio" name="wquality" id="w-high" value="0.92">
+        <label for="w-high">Tinggi<span class="tag">92%</span></label>
+
+        <input type="radio" name="wquality" id="w-medium" value="0.8" checked>
+        <label for="w-medium">Seimbang<span class="tag">80%</span></label>
+
+        <input type="radio" name="wquality" id="w-low" value="0.6">
+        <label for="w-low">Ringan<span class="tag">60%</span></label>
+      </div>
+      <p class="hint">Gambar berlatar transparan akan otomatis diberi latar putih, karena format JPEG tidak mendukung transparansi.</p>
+    </div>
+
+    <div class="glass-card">
+      <button class="btn btn-primary" id="wConvertBtn" disabled>
+        <span class="spinner"></span>
+        <span class="btn-label">🖼️ Ubah ke JPEG</span>
+      </button>
+      <div class="hint" id="wDoneHint" style="display:none; text-align:center; margin-top:14px;">✅ Semua gambar sudah diunduh sebagai .jpg</div>
+    </div>
+
+  </div>
+  <!-- ===================== END TAB: WEBP -> JPEG ===================== -->
 
   <footer>
     <div>Dibuat dengan 🩵 — semua proses konversi terjadi lokal di perangkatmu.</div>
@@ -737,6 +957,297 @@
     a.click();
     document.body.removeChild(a);
     setTimeout(()=> URL.revokeObjectURL(url), 2000);
+  });
+})();
+
+/* ===================== TAB SWITCHING ===================== */
+(function(){
+  const tabbar = document.getElementById('tabbar');
+  tabbar.addEventListener('click', (e)=>{
+    const btn = e.target.closest('button[data-tab]');
+    if(!btn) return;
+    tabbar.querySelectorAll('button').forEach(b=> b.classList.remove('active'));
+    btn.classList.add('active');
+    document.querySelectorAll('.tab-panel').forEach(p=> p.classList.remove('active'));
+    document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+  });
+})();
+
+/* ===================== VIDEO -> MP4 (ffmpeg.wasm) ===================== */
+(function(){
+  const vDropzone = document.getElementById('vDropzone');
+  const vFileInput = document.getElementById('vFileInput');
+  const vFileRow = document.getElementById('vFileRow');
+  const vQualityCard = document.getElementById('vQualityCard');
+  const vConvertBtn = document.getElementById('vConvertBtn');
+  const vProgressWrap = document.getElementById('vProgressWrap');
+  const vProgressFill = document.getElementById('vProgressFill');
+  const vProgressLabel = document.getElementById('vProgressLabel');
+  const vResult = document.getElementById('vResult');
+  const vSizeBefore = document.getElementById('vSizeBefore');
+  const vSizeAfter = document.getElementById('vSizeAfter');
+  const vSavings = document.getElementById('vSavings');
+  const vDownloadBtn = document.getElementById('vDownloadBtn');
+
+  let currentFile = null;
+  let outputBlob = null;
+  let outputName = 'converted.mp4';
+  let ffmpeg = null;
+
+  function formatSize(bytes){
+    if(bytes < 1024) return bytes + ' B';
+    if(bytes < 1024*1024) return (bytes/1024).toFixed(0) + ' KB';
+    return (bytes/(1024*1024)).toFixed(2) + ' MB';
+  }
+
+  function extOf(name){
+    const m = /\.([^.]+)$/.exec(name);
+    return m ? m[1].toUpperCase() : '?';
+  }
+
+  vDropzone.addEventListener('click', ()=> vFileInput.click());
+  vDropzone.addEventListener('dragover', e=>{ e.preventDefault(); vDropzone.classList.add('dragover'); });
+  vDropzone.addEventListener('dragleave', ()=> vDropzone.classList.remove('dragover'));
+  vDropzone.addEventListener('drop', e=>{
+    e.preventDefault();
+    vDropzone.classList.remove('dragover');
+    if(e.dataTransfer.files.length) setFile(e.dataTransfer.files[0]);
+  });
+  vFileInput.addEventListener('change', e=>{
+    if(e.target.files.length) setFile(e.target.files[0]);
+  });
+
+  function setFile(file){
+    currentFile = file;
+    outputBlob = null;
+    vResult.style.display = 'none';
+    vFileRow.innerHTML = `
+      <div class="video-file-row">
+        <div class="vicon">🎬</div>
+        <div class="vinfo">
+          <div class="vname">${file.name}</div>
+          <div class="vmeta">${formatSize(file.size)} · <span class="format-pill">${extOf(file.name)} → MP4</span></div>
+        </div>
+        <button class="vremove" id="vRemoveBtn" type="button">✕</button>
+      </div>
+    `;
+    document.getElementById('vRemoveBtn').addEventListener('click', ()=>{
+      currentFile = null;
+      vFileRow.innerHTML = '';
+      vQualityCard.style.display = 'none';
+      vConvertBtn.disabled = true;
+      vFileInput.value = '';
+    });
+    vQualityCard.style.display = 'block';
+    vConvertBtn.disabled = false;
+  }
+
+  async function loadFFmpeg(){
+    if(ffmpeg) return ffmpeg;
+    const { FFmpeg } = FFmpegWASM;
+    const { toBlobURL } = FFmpegUtil;
+    ffmpeg = new FFmpeg();
+    ffmpeg.on('log', ({ message })=>{ /* console.log(message); */ });
+    ffmpeg.on('progress', ({ progress })=>{
+      const pct = Math.min(100, Math.max(0, Math.round(progress * 100)));
+      vProgressFill.style.width = pct + '%';
+      vProgressLabel.textContent = `Mengonversi video… ${pct}%`;
+    });
+    vProgressLabel.textContent = 'Mengunduh mesin konversi (sekali saja)…';
+    const baseURL = 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd';
+    await ffmpeg.load({
+      coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, 'text/javascript'),
+      wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, 'application/wasm'),
+    });
+    return ffmpeg;
+  }
+
+  const qualityPresets = {
+    high:   { crf: '18', preset: 'medium' },
+    medium: { crf: '23', preset: 'fast' },
+    low:    { crf: '30', preset: 'veryfast' },
+  };
+
+  vConvertBtn.addEventListener('click', async ()=>{
+    if(!currentFile) return;
+    vConvertBtn.classList.add('loading');
+    vConvertBtn.disabled = true;
+    vProgressWrap.classList.add('show');
+    vProgressFill.style.width = '0%';
+    vResult.style.display = 'none';
+
+    try{
+      const { fetchFile } = FFmpegUtil;
+      const ff = await loadFFmpeg();
+      const quality = document.querySelector('input[name=vquality]:checked').value;
+      const preset = qualityPresets[quality];
+
+      const inputExt = (/\.([^.]+)$/.exec(currentFile.name) || [,'input'])[1];
+      const inputName = `input.${inputExt}`;
+      const outName = 'output.mp4';
+
+      vProgressLabel.textContent = 'Membaca file video…';
+      await ff.writeFile(inputName, await fetchFile(currentFile));
+
+      vProgressLabel.textContent = 'Mengonversi video… 0%';
+      await ff.exec([
+        '-i', inputName,
+        '-c:v', 'libx264',
+        '-preset', preset.preset,
+        '-crf', preset.crf,
+        '-c:a', 'aac',
+        '-b:a', '128k',
+        '-movflags', '+faststart',
+        outName
+      ]);
+
+      const data = await ff.readFile(outName);
+      outputBlob = new Blob([data.buffer], { type: 'video/mp4' });
+      outputName = currentFile.name.replace(/\.[^/.]+$/, '') + '.mp4';
+
+      // cleanup wasm FS
+      try{ await ff.deleteFile(inputName); await ff.deleteFile(outName); }catch(e){}
+
+      vSizeBefore.textContent = formatSize(currentFile.size);
+      vSizeAfter.textContent = formatSize(outputBlob.size);
+      const diffPct = Math.round((1 - outputBlob.size / currentFile.size) * 100);
+      if(diffPct > 0){
+        vSavings.style.display = 'inline-block';
+        vSavings.textContent = `↓ ${diffPct}% lebih kecil`;
+      } else {
+        vSavings.style.display = 'none';
+      }
+      vProgressLabel.textContent = 'Selesai!';
+      vProgressFill.style.width = '100%';
+      vResult.style.display = 'flex';
+    } catch(err){
+      alert('Terjadi kesalahan saat mengonversi video: ' + err.message);
+      console.error(err);
+    } finally {
+      vConvertBtn.classList.remove('loading');
+      vConvertBtn.disabled = false;
+      setTimeout(()=> vProgressWrap.classList.remove('show'), 600);
+    }
+  });
+
+  vDownloadBtn.addEventListener('click', ()=>{
+    if(!outputBlob) return;
+    const url = URL.createObjectURL(outputBlob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = outputName;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(()=> URL.revokeObjectURL(url), 2000);
+  });
+})();
+
+/* ===================== WEBP -> JPEG ===================== */
+(function(){
+  const wDropzone = document.getElementById('wDropzone');
+  const wFileInput = document.getElementById('wFileInput');
+  const wFileList = document.getElementById('wFileList');
+  const wQualityCard = document.getElementById('wQualityCard');
+  const wConvertBtn = document.getElementById('wConvertBtn');
+  const wDoneHint = document.getElementById('wDoneHint');
+
+  let files = []; // {file, url, id}
+  let idCounter = 0;
+
+  wDropzone.addEventListener('click', ()=> wFileInput.click());
+  wDropzone.addEventListener('dragover', e=>{ e.preventDefault(); wDropzone.classList.add('dragover'); });
+  wDropzone.addEventListener('dragleave', ()=> wDropzone.classList.remove('dragover'));
+  wDropzone.addEventListener('drop', e=>{
+    e.preventDefault();
+    wDropzone.classList.remove('dragover');
+    handleFiles(e.dataTransfer.files);
+  });
+  wFileInput.addEventListener('change', e=> handleFiles(e.target.files));
+
+  function handleFiles(fileListRaw){
+    const valid = Array.from(fileListRaw).filter(f=> /image\/webp/.test(f.type) || /\.webp$/i.test(f.name));
+    valid.forEach(f=>{
+      files.push({ file:f, url:URL.createObjectURL(f), id:idCounter++ });
+    });
+    render();
+  }
+
+  function render(){
+    wFileList.innerHTML = '';
+    files.forEach(item=>{
+      const div = document.createElement('div');
+      div.className = 'file-item';
+      div.innerHTML = `
+        <img src="${item.url}" alt="">
+        <button class="remove" data-id="${item.id}">✕</button>
+        <div class="badge">${(item.file.size/1024).toFixed(0)} KB</div>
+      `;
+      wFileList.appendChild(div);
+    });
+    wFileList.querySelectorAll('.remove').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        const id = parseInt(btn.dataset.id);
+        files = files.filter(f=> f.id !== id);
+        render();
+      });
+    });
+    wQualityCard.style.display = files.length ? 'block' : 'none';
+    wConvertBtn.disabled = files.length === 0;
+    wDoneHint.style.display = 'none';
+  }
+
+  function loadImage(url){
+    return new Promise((resolve, reject)=>{
+      const img = new Image();
+      img.onload = ()=> resolve(img);
+      img.onerror = reject;
+      img.src = url;
+    });
+  }
+
+  function sanitizeFileName(name){
+    const base = name.replace(/\.[^/.]+$/, '').trim();
+    const cleaned = base.replace(/[\\/:*?"<>|]/g, '').trim();
+    return cleaned.length > 0 ? cleaned : 'converted';
+  }
+
+  wConvertBtn.addEventListener('click', async ()=>{
+    if(files.length === 0) return;
+    wConvertBtn.classList.add('loading');
+    wConvertBtn.disabled = true;
+    const quality = parseFloat(document.querySelector('input[name=wquality]:checked').value);
+
+    try{
+      for(let i=0; i<files.length; i++){
+        const item = files[i];
+        const img = await loadImage(item.url);
+        const canvas = document.createElement('canvas');
+        canvas.width = img.naturalWidth;
+        canvas.height = img.naturalHeight;
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillRect(0,0,canvas.width,canvas.height);
+        ctx.drawImage(img, 0, 0);
+        const dataUrl = canvas.toDataURL('image/jpeg', quality);
+
+        const a = document.createElement('a');
+        a.href = dataUrl;
+        a.download = sanitizeFileName(item.file.name) + '.jpg';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        // small delay so browser doesn't block multiple simultaneous downloads
+        await new Promise(r=> setTimeout(r, 250));
+      }
+      wDoneHint.style.display = 'block';
+    } catch(err){
+      alert('Terjadi kesalahan saat mengonversi gambar: ' + err.message);
+      console.error(err);
+    } finally {
+      wConvertBtn.classList.remove('loading');
+      wConvertBtn.disabled = false;
+    }
   });
 })();
 </script>
