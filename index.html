@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Konverter File — PDF · Video · Gambar</title>
+<title>Konverter File — PDF · Video · Gambar · WebP</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://unpkg.com/@ffmpeg/ffmpeg@0.12.10/dist/umd/ffmpeg.js"></script>
 <script src="https://unpkg.com/@ffmpeg/util@0.12.1/dist/umd/index.js"></script>
@@ -378,12 +378,13 @@
   @media (max-width:520px){
     .segmented{ grid-template-columns:repeat(3,1fr); }
     .segmented label:nth-child(9),.segmented label:nth-child(10){ grid-column:span 1.5; }
+    .tabbar{ grid-template-columns:repeat(2,1fr); }
   }
 
   /* main tab bar */
   .tabbar{
     display:grid;
-    grid-template-columns:repeat(3,1fr);
+    grid-template-columns:repeat(4,1fr);
     gap:6px;
     background:var(--segment-bg);
     border:1px solid var(--glass-border);
@@ -494,12 +495,13 @@
   <header>
     <div class="eyebrow">✨ Simple &amp; cepat</div>
     <h1>Konverter file, jadi <span>gampang</span></h1>
-    <p>Ubah gambar ke PDF, video ke MP4, atau WebP ke JPEG. Semua diproses langsung di browser kamu — tidak ada file yang diunggah ke server.</p>
+    <p>Ubah gambar ke PDF, video ke MP4, JPG ke WebP, atau WebP ke JPEG. Semua diproses langsung di browser kamu — tidak ada file yang diunggah ke server.</p>
   </header>
 
   <div class="tabbar" id="tabbar">
     <button type="button" class="active" data-tab="image"><span class="tabicon">📄</span> Gambar → PDF</button>
     <button type="button" data-tab="video"><span class="tabicon">🎬</span> Video → MP4</button>
+    <button type="button" data-tab="jpgwebp"><span class="tabicon">🔄</span> JPG → WebP</button>
     <button type="button" data-tab="webp"><span class="tabicon">🖼️</span> WebP → JPEG</button>
   </div>
 
@@ -634,6 +636,67 @@
 
   </div>
   <!-- ===================== END TAB: VIDEO -> MP4 ===================== -->
+
+  <!-- ===================== TAB: JPG -> WEBP ===================== -->
+  <div class="tab-panel" id="tab-jpgwebp">
+
+  <!-- Upload card -->
+  <div class="glass-card">
+    <div class="section-title"><span class="num">1</span> Pilih gambar JPG</div>
+    <div class="dropzone" id="jDropzone">
+      <div class="icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4M12 4l-5 5M12 4l5 5"/><path d="M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>
+      </div>
+      <strong>Tap atau seret gambar JPG ke sini</strong>
+      <span>Mendukung JPG, JPEG · bisa pilih banyak file sekaligus</span>
+    </div>
+    <input type="file" id="jFileInput" accept=".jpg,.jpeg,image/jpeg" multiple>
+    <div class="file-list" id="jFileList"></div>
+  </div>
+
+  <!-- Compression card -->
+  <div class="glass-card" id="jCompressCard" style="display:none;">
+    <div class="section-title"><span class="num">2</span> Tingkat kompresi</div>
+    <div class="segmented" id="jSegmented">
+      <input type="radio" name="jcompress" id="j-none" value="none">
+      <label for="j-none">Original<span class="tag">0%</span></label>
+
+      <input type="radio" name="jcompress" id="j-low" value="low">
+      <label for="j-low">Low<span class="tag">↓ sedikit</span></label>
+
+      <input type="radio" name="jcompress" id="j-medium" value="medium" checked>
+      <label for="j-medium">Medium<span class="tag">seimbang</span></label>
+
+      <input type="radio" name="jcompress" id="j-max" value="max">
+      <label for="j-max">Max<span class="tag">↓ paling kecil</span></label>
+
+      <input type="radio" name="jcompress" id="j-hd" value="hd">
+      <label for="j-hd" class="hd">HD Smart<span class="tag">kecil, tajam</span></label>
+    </div>
+    <p class="hint" id="jHintText">Medium: ukuran file WebP berkurang cukup signifikan dengan penurunan kualitas yang hampir tidak terlihat.</p>
+  </div>
+
+  <!-- Action card -->
+  <div class="glass-card">
+    <button class="btn btn-primary" id="jConvertBtn" disabled>
+      <span class="spinner"></span>
+      <span class="btn-label">🔄 Ubah ke WebP</span>
+    </button>
+
+    <div class="result" id="jResult">
+      <div class="check"><svg viewBox="0 0 24 24" fill="none" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg></div>
+      <h3>Gambar WebP kamu siap!</h3>
+      <div class="sizes">
+        <div>Sebelum<b id="jSizeBefore">-</b></div>
+        <div>Sesudah<b id="jSizeAfter">-</b></div>
+      </div>
+      <div class="savings" id="jSavings"></div>
+      <p class="hint" style="text-align:center;">✅ Semua gambar sudah otomatis terunduh sebagai .webp</p>
+    </div>
+  </div>
+
+  </div>
+  <!-- ===================== END TAB: JPG -> WEBP ===================== -->
 
   <!-- ===================== TAB: WEBP -> JPEG ===================== -->
   <div class="tab-panel" id="tab-webp">
@@ -1251,6 +1314,181 @@
     } finally {
       wConvertBtn.classList.remove('loading');
       wConvertBtn.disabled = false;
+    }
+  });
+})();
+
+/* ===================== JPG -> WEBP ===================== */
+(function(){
+  const jDropzone = document.getElementById('jDropzone');
+  const jFileInput = document.getElementById('jFileInput');
+  const jFileList = document.getElementById('jFileList');
+  const jCompressCard = document.getElementById('jCompressCard');
+  const jConvertBtn = document.getElementById('jConvertBtn');
+  const jResult = document.getElementById('jResult');
+  const jHintText = document.getElementById('jHintText');
+  const jSizeBefore = document.getElementById('jSizeBefore');
+  const jSizeAfter = document.getElementById('jSizeAfter');
+  const jSavings = document.getElementById('jSavings');
+
+  let files = []; // {file, url, id}
+  let idCounter = 0;
+
+  const jHints = {
+    none: 'Original: kualitas gambar dipertahankan semaksimal mungkin, ukuran file WebP paling besar.',
+    low: 'Low: kompresi ringan, kualitas nyaris tidak berubah, ukuran file sedikit lebih kecil.',
+    medium: 'Medium: ukuran file WebP berkurang cukup signifikan dengan penurunan kualitas yang hampir tidak terlihat.',
+    max: 'Max: kompresi paling kuat untuk ukuran file paling kecil, cocok untuk dikirim lewat email/chat.',
+    hd: 'HD Smart: resolusi asli dipertahankan penuh, hanya encoding yang dioptimalkan — hasil tetap tajam namun ukuran file jauh lebih kecil dari JPG asli.'
+  };
+
+  document.querySelectorAll('input[name=jcompress]').forEach(r=>{
+    r.addEventListener('change', ()=>{ jHintText.textContent = jHints[r.value]; });
+  });
+
+  jDropzone.addEventListener('click', ()=> jFileInput.click());
+  jDropzone.addEventListener('dragover', e=>{ e.preventDefault(); jDropzone.classList.add('dragover'); });
+  jDropzone.addEventListener('dragleave', ()=> jDropzone.classList.remove('dragover'));
+  jDropzone.addEventListener('drop', e=>{
+    e.preventDefault();
+    jDropzone.classList.remove('dragover');
+    handleFiles(e.dataTransfer.files);
+  });
+  jFileInput.addEventListener('change', e=> handleFiles(e.target.files));
+
+  function handleFiles(fileListRaw){
+    const valid = Array.from(fileListRaw).filter(f=> /image\/jpe?g/.test(f.type) || /\.jpe?g$/i.test(f.name));
+    valid.forEach(f=>{
+      files.push({ file:f, url:URL.createObjectURL(f), id:idCounter++ });
+    });
+    render();
+  }
+
+  function render(){
+    jFileList.innerHTML = '';
+    files.forEach(item=>{
+      const div = document.createElement('div');
+      div.className = 'file-item';
+      div.innerHTML = `
+        <img src="${item.url}" alt="">
+        <button class="remove" data-id="${item.id}">✕</button>
+        <div class="badge">${(item.file.size/1024).toFixed(0)} KB</div>
+      `;
+      jFileList.appendChild(div);
+    });
+    jFileList.querySelectorAll('.remove').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        const id = parseInt(btn.dataset.id);
+        files = files.filter(f=> f.id !== id);
+        render();
+      });
+    });
+    const has = files.length > 0;
+    jCompressCard.style.display = has ? 'block' : 'none';
+    jConvertBtn.disabled = !has;
+    jResult.style.display = 'none';
+  }
+
+  function loadImage(url){
+    return new Promise((resolve, reject)=>{
+      const img = new Image();
+      img.onload = ()=> resolve(img);
+      img.onerror = reject;
+      img.src = url;
+    });
+  }
+
+  // mirrors the JPG -> PDF compression tiers, tuned for WebP output
+  function modeSettings(mode){
+    if(mode === 'none')   return { scale:1,    quality:0.95 };
+    if(mode === 'low')    return { scale:1,    quality:0.85 };
+    if(mode === 'medium') return { scale:0.9,  quality:0.72 };
+    if(mode === 'max')    return { scale:0.65, quality:0.45 };
+    if(mode === 'hd')     return { scale:1,    quality:0.8 };
+    return { scale:1, quality:0.8 };
+  }
+
+  function toWebp(img, mode){
+    const { scale, quality } = modeSettings(mode);
+    const w = Math.max(1, Math.round(img.naturalWidth * scale));
+    const h = Math.max(1, Math.round(img.naturalHeight * scale));
+    const canvas = document.createElement('canvas');
+    canvas.width = w; canvas.height = h;
+    const ctx = canvas.getContext('2d');
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(img, 0, 0, w, h);
+    return canvas.toDataURL('image/webp', quality);
+  }
+
+  function dataUrlSize(dataUrl){
+    const base64 = dataUrl.split(',')[1] || '';
+    return Math.round(base64.length * 0.75);
+  }
+
+  function sanitizeFileName(name){
+    const base = name.replace(/\.[^/.]+$/, '').trim();
+    const cleaned = base.replace(/[\\/:*?"<>|]/g, '').trim();
+    return cleaned.length > 0 ? cleaned : 'converted';
+  }
+
+  function formatSize(bytes){
+    if(bytes < 1024) return bytes + ' B';
+    if(bytes < 1024*1024) return (bytes/1024).toFixed(0) + ' KB';
+    return (bytes/(1024*1024)).toFixed(2) + ' MB';
+  }
+
+  jConvertBtn.addEventListener('click', async ()=>{
+    if(files.length === 0) return;
+    jConvertBtn.classList.add('loading');
+    jConvertBtn.disabled = true;
+    jResult.style.display = 'none';
+
+    const mode = document.querySelector('input[name=jcompress]:checked').value;
+    let totalBefore = 0, totalAfter = 0;
+
+    try{
+      // quick support check
+      const testCanvas = document.createElement('canvas');
+      testCanvas.width = testCanvas.height = 1;
+      if(testCanvas.toDataURL('image/webp').indexOf('image/webp') !== 0){
+        alert('Browser kamu belum mendukung ekspor gambar WebP. Coba gunakan Chrome, Edge, atau Firefox terbaru.');
+        return;
+      }
+
+      for(let i=0; i<files.length; i++){
+        const item = files[i];
+        const img = await loadImage(item.url);
+        const dataUrl = toWebp(img, mode);
+        totalBefore += item.file.size;
+        totalAfter += dataUrlSize(dataUrl);
+
+        const a = document.createElement('a');
+        a.href = dataUrl;
+        a.download = sanitizeFileName(item.file.name) + '.webp';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        // small delay so browser doesn't block multiple simultaneous downloads
+        await new Promise(r=> setTimeout(r, 250));
+      }
+
+      jSizeBefore.textContent = formatSize(totalBefore);
+      jSizeAfter.textContent = formatSize(totalAfter);
+      const savingsPct = totalBefore > 0 ? Math.round((1 - totalAfter/totalBefore) * 100) : 0;
+      if(savingsPct > 0){
+        jSavings.style.display = 'inline-block';
+        jSavings.textContent = `↓ ${savingsPct}% lebih kecil`;
+      } else {
+        jSavings.style.display = 'none';
+      }
+      jResult.style.display = 'flex';
+    } catch(err){
+      alert('Terjadi kesalahan saat mengonversi gambar: ' + err.message);
+      console.error(err);
+    } finally {
+      jConvertBtn.classList.remove('loading');
+      jConvertBtn.disabled = false;
     }
   });
 })();
