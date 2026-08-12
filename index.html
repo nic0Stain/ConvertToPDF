@@ -501,7 +501,7 @@
   <div class="tabbar" id="tabbar">
     <button type="button" class="active" data-tab="image"><span class="tabicon">📄</span> Gambar → PDF</button>
     <button type="button" data-tab="video"><span class="tabicon">🎬</span> Video → MP4</button>
-    <button type="button" data-tab="jpgwebp"><span class="tabicon">🔄</span> JPG → WebP</button>
+    <button type="button" data-tab="jpgwebp"><span class="tabicon">🔄</span> JPG/PNG → WebP</button>
     <button type="button" data-tab="webp"><span class="tabicon">🖼️</span> WebP → JPEG</button>
   </div>
 
@@ -642,15 +642,15 @@
 
   <!-- Upload card -->
   <div class="glass-card">
-    <div class="section-title"><span class="num">1</span> Pilih gambar JPG</div>
+    <div class="section-title"><span class="num">1</span> Pilih gambar JPG atau PNG</div>
     <div class="dropzone" id="jDropzone">
       <div class="icon">
         <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4M12 4l-5 5M12 4l5 5"/><path d="M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>
       </div>
-      <strong>Tap atau seret gambar JPG ke sini</strong>
-      <span>Mendukung JPG, JPEG · bisa pilih banyak file sekaligus</span>
+      <strong>Tap atau seret gambar JPG/PNG ke sini</strong>
+      <span>Mendukung JPG, JPEG, PNG · bisa pilih banyak file sekaligus</span>
     </div>
-    <input type="file" id="jFileInput" accept=".jpg,.jpeg,image/jpeg" multiple>
+    <input type="file" id="jFileInput" accept=".jpg,.jpeg,.png,image/jpeg,image/png" multiple>
     <div class="file-list" id="jFileList"></div>
   </div>
 
@@ -673,7 +673,7 @@
       <input type="radio" name="jcompress" id="j-hd" value="hd">
       <label for="j-hd" class="hd">HD Smart<span class="tag">kecil, tajam</span></label>
     </div>
-    <p class="hint" id="jHintText">Medium: ukuran file WebP berkurang cukup signifikan dengan penurunan kualitas yang hampir tidak terlihat.</p>
+    <p class="hint" id="jHintText">Medium: ukuran file WebP berkurang cukup signifikan dengan penurunan kualitas yang hampir tidak terlihat. Transparansi pada PNG tetap dipertahankan.</p>
   </div>
 
   <!-- Action card -->
@@ -1339,7 +1339,7 @@
     low: 'Low: kompresi ringan, kualitas nyaris tidak berubah, ukuran file sedikit lebih kecil.',
     medium: 'Medium: ukuran file WebP berkurang cukup signifikan dengan penurunan kualitas yang hampir tidak terlihat.',
     max: 'Max: kompresi paling kuat untuk ukuran file paling kecil, cocok untuk dikirim lewat email/chat.',
-    hd: 'HD Smart: resolusi asli dipertahankan penuh, hanya encoding yang dioptimalkan — hasil tetap tajam namun ukuran file jauh lebih kecil dari JPG asli.'
+    hd: 'HD Smart: resolusi asli dipertahankan penuh, hanya encoding yang dioptimalkan — hasil tetap tajam namun ukuran file jauh lebih kecil dari gambar asli.'
   };
 
   document.querySelectorAll('input[name=jcompress]').forEach(r=>{
@@ -1357,7 +1357,7 @@
   jFileInput.addEventListener('change', e=> handleFiles(e.target.files));
 
   function handleFiles(fileListRaw){
-    const valid = Array.from(fileListRaw).filter(f=> /image\/jpe?g/.test(f.type) || /\.jpe?g$/i.test(f.name));
+    const valid = Array.from(fileListRaw).filter(f=> /image\/(jpe?g|png)/.test(f.type) || /\.(jpe?g|png)$/i.test(f.name));
     valid.forEach(f=>{
       files.push({ file:f, url:URL.createObjectURL(f), id:idCounter++ });
     });
