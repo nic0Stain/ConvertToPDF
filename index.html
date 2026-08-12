@@ -1451,7 +1451,7 @@
       // quick support check
       const testCanvas = document.createElement('canvas');
       testCanvas.width = testCanvas.height = 1;
-      if(testCanvas.toDataURL('image/webp').indexOf('image/webp') !== 0){
+      if(testCanvas.toDataURL('image/webp').indexOf('data:image/webp') !== 0){
         alert('Browser kamu belum mendukung ekspor gambar WebP. Coba gunakan Chrome, Edge, atau Firefox terbaru.');
         return;
       }
